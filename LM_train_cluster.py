@@ -122,9 +122,9 @@ def Proposed_AUM_macro(pred_tensor, label_tensor):
 loss_dict={
     "AUM_micro": Proposed_AUM_micro,
     "AUM_macro": Proposed_AUM_macro,
-    "Cross entropy": F.cross_entropy
+    "Cross-entropy": F.cross_entropy
 }
-loss_fn_str="Cross entropy"
+loss_fn_str=sys.argv[1]
 loss_fn=loss_dict[loss_fn_str]
 
 

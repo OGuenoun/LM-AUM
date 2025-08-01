@@ -8,4 +8,4 @@
 
 module load python/3.11
 source LM_env/bin/activate
-python ~/LM_AUM/LM_train_cluster.py
+python ~/LM_AUM/LM_train_cluster.py AUM_micro
