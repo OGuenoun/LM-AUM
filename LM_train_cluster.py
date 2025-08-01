@@ -19,8 +19,9 @@ import pandas as pd
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def ROC_curve_micro(pred_tensor, label_tensor):
+    device=pred_tensor.device
     n_class=pred_tensor.size(1)
-    one_hot_labels = F.one_hot(label_tensor, num_classes=n_class) 
+    one_hot_labels = F.one_hot(label_tensor, num_classes=n_class).to(device)
     is_positive = one_hot_labels
     is_negative =1-one_hot_labels
     fn_diff = -is_positive.flatten()
@@ -34,15 +35,15 @@ def ROC_curve_micro(pred_tensor, label_tensor):
 
     sorted_thresh = thresh_tensor[sorted_indices]
     sorted_is_diff = sorted_thresh.diff() != 0
-    sorted_fp_end = torch.cat([sorted_is_diff, torch.tensor([True])])
-    sorted_fn_end = torch.cat([torch.tensor([True]), sorted_is_diff])
+    sorted_fp_end = torch.cat([sorted_is_diff, torch.tensor([True],device=device)])
+    sorted_fn_end = torch.cat([torch.tensor([True],device=device), sorted_is_diff])
 
     uniq_thresh = sorted_thresh[sorted_fp_end]
     uniq_fp_after = sorted_fp_cum[sorted_fp_end]
     uniq_fn_before = sorted_fn_cum[sorted_fn_end]
 
-    FPR = torch.cat([torch.tensor([0.0]), uniq_fp_after])
-    FNR = torch.cat([uniq_fn_before, torch.tensor([0.0])])
+    FPR = torch.cat([torch.tensor([0.0],device=device), uniq_fp_after])
+    FNR = torch.cat([uniq_fn_before, torch.tensor([0.0],device=device)])
 
     return {
         "FPR": FPR,
@@ -64,6 +65,7 @@ def Proposed_AUM_micro(pred_tensor, label_tensor):
     min_FPR_FNR = roc["min(FPR,FNR)"][1:-1]
     constant_diff = roc["min_constant"][1:].diff()
     return torch.sum(min_FPR_FNR * constant_diff)
+
 def ROC_curve_macro(pred_tensor, label_tensor):
     device = pred_tensor.device  
     n_class = pred_tensor.size(1)
@@ -125,6 +127,7 @@ loss_dict={
     "Cross-entropy": F.cross_entropy
 }
 loss_fn_str=sys.argv[1]
+
 loss_fn=loss_dict[loss_fn_str]
 
 
@@ -262,7 +265,7 @@ class GPTModel(nn.Module):
 batch_size = 64
 sequence_len = 128
 num_steps = 15000
-accumulation_steps = 100
+accumulation_steps = 10
 
 # Reload the train and test datasets
 train_ds = datasets.load_dataset("parquet", data_files="Tinystories_train.parquet", split="train")
@@ -331,7 +334,6 @@ for i in range(num_steps):
         model.eval()
         test_loss = 0
         test_accumulator = 0
-        print("Here")
         with torch.no_grad():
             for test_example in test_dataloader:
                 test_input = test_example["input"].to(device)
