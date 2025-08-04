@@ -264,9 +264,8 @@ class GPTModel(nn.Module):
 # Example config:
 batch_size = 64
 sequence_len = 128
-num_steps = 15000
-accumulation_steps = 10
-
+num_steps = 150000
+accumulation_steps = 100
 # Reload the train and test datasets
 train_ds = datasets.load_dataset("parquet", data_files="Tinystories_train.parquet", split="train")
 test_ds = datasets.load_dataset("parquet", data_files="Tinystories_test.parquet", split="train")
@@ -357,4 +356,4 @@ df = pd.DataFrame({
     'train_loss': losses,
     'test_loss': test_losses
 })
-df.to_csv('training_log.csv', index=False)
+df.to_csv(f'{loss_fn_str}_training_log.csv', index=False)
