@@ -263,20 +263,18 @@ class GPTModel(nn.Module):
 
 # Example config:
 batch_size = 64
-sequence_len = 128
+sequence_len = 256
 num_steps = 150000
 accumulation_steps = 100
-# Reload the train and test datasets
+
 train_ds = datasets.load_dataset("parquet", data_files="Tinystories_train.parquet", split="train")
 test_ds = datasets.load_dataset("parquet", data_files="Tinystories_test.parquet", split="train")
 
 hf_tokenizer = AutoTokenizer.from_pretrained("gpt2_local")
 
-# Convert dataset to PyTorch format
 train_ds.set_format("torch", columns=["input", "target"])
 test_ds.set_format("torch", columns=["input", "target"])
 
-# Create DataLoaders for training and testing
 train_dataloader = cycle(DataLoader(train_ds, batch_size=batch_size, shuffle=False))
 test_dataloader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
@@ -288,14 +286,14 @@ config = GPTConfig(
     seq_len=sequence_len,
 )
 
-# Create the GPT model
+
 model = GPTModel(config)
 
 
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-2)
 
 
-# Define Scheduler
+# reduce learning rate 
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',factor=0.3, patience=10, min_lr=5e-6, threshold=1e-4)
 
 
@@ -347,7 +345,7 @@ for i in range(num_steps):
             scheduler.step(test_losses[-1])
 
 
-    if (i+1) % 5000 == 0:
+    if (i+1) % 50000 == 0:
         # Save the model checkpoint
         print(f"Saving model checkpoint at step {i+1}")
         torch.save(model, f"./model_checkpoint_{i}.pt")
