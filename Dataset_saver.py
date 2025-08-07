@@ -52,9 +52,9 @@ if not check_dataset_exists():
                 row_count += 1
 
     # Set the max number of rows for training and testing
-    TRAIN_ROWS = 100000  # Adjust as needed
+    TRAIN_ROWS = 300000  # Adjust as needed
     TEST_ROWS = 500   # Adjust as needed
-    CHUNK_SIZE = 128
+    CHUNK_SIZE = 512
 
     # Convert generator to a Hugging Face Dataset
     tokenized_ds = datasets.Dataset.from_generator(lambda: tokenize_and_chunk(ds, hf_tokenizer,chunk_size=CHUNK_SIZE, train_rows=TRAIN_ROWS, test_rows=TEST_ROWS))

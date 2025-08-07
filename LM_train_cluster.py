@@ -67,8 +67,9 @@ def Proposed_AUM_micro(pred_tensor, label_tensor):
     return torch.sum(min_FPR_FNR * constant_diff)
 
 def ROC_curve_macro(pred_tensor, label_tensor):
+    device = pred_tensor.device 
     n_class=pred_tensor.size(1)
-    one_hot_labels = F.one_hot(label_tensor, num_classes=n_class)
+    one_hot_labels = F.one_hot(label_tensor, num_classes=n_class).to(device)
     is_positive = one_hot_labels
     is_negative =1-one_hot_labels
     fn_diff = -is_positive
@@ -81,7 +82,7 @@ def ROC_curve_macro(pred_tensor, label_tensor):
     sorted_fn_cum = -torch.div(torch.gather(fn_diff, dim=0, index=sorted_indices).flip(0).cumsum(0).flip(0) , fn_denom)
     sorted_thresh = torch.gather(thresh_tensor, dim=0, index=sorted_indices)
     #Problem starts here 
-    zeros_vec=torch.zeros(1,n_class)
+    zeros_vec=torch.zeros(1,n_class,device=device)
     FPR = torch.cat([zeros_vec, sorted_fp_cum])
     FNR = torch.cat([sorted_fn_cum, zeros_vec])
     return {
@@ -89,7 +90,7 @@ def ROC_curve_macro(pred_tensor, label_tensor):
         "FNR_all_classes": FNR,
         "TPR_all_classes": 1 - FNR,
         "min(FPR,FNR)": torch.minimum(FPR, FNR),
-        "min_constant": torch.cat([-torch.ones(1,n_class), sorted_thresh]),
+        "min_constant": torch.cat([-torch.ones(1,n_class, device=device), sorted_thresh]),
         "max_constant": torch.cat([sorted_thresh, zeros_vec])
     }
 
@@ -112,7 +113,7 @@ def Proposed_AUM_macro(pred_tensor, label_tensor):
     sum_min= torch.sum(min_FPR_FNR * constant_diff,dim=0)
     count_non_defined=(sum_FPR==0).sum()
     if count_non_defined==pred_tensor.size(1):
-        return 0
+        return torch.tensor(0.0,device=pred_tensor.device)
     return  sum_min.sum()/(pred_tensor.size(1)-count_non_defined)
 
 loss_dict={
@@ -256,9 +257,9 @@ class GPTModel(nn.Module):
 
 
 # Example config:
-batch_size = 64
-sequence_len = 128
-num_steps = 150000
+batch_size = 50
+sequence_len = 512
+num_steps = 120000
 accumulation_steps = 100
 
 train_ds = datasets.load_dataset("parquet", data_files="Tinystories_train.parquet", split="train")
@@ -339,7 +340,7 @@ for i in range(num_steps):
             scheduler.step(test_losses[-1])
 
 
-    if (i+1) % 50000 == 0:
+    if (i+1) % 40000 == 0:
         # Save the model checkpoint
         print(f"Saving model checkpoint at step {i+1}")
         torch.save(model, f"./{loss_fn_str}_model_checkpoint_{i}.pt")
