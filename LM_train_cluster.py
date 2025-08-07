@@ -17,7 +17,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 import pandas as pd
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+print(device)
 def ROC_curve_micro(pred_tensor, label_tensor):
     device=pred_tensor.device
     n_class=pred_tensor.size(1)
@@ -263,7 +263,7 @@ class GPTModel(nn.Module):
 
 # Example config:
 batch_size = 64
-sequence_len = 256
+sequence_len = 128
 num_steps = 150000
 accumulation_steps = 100
 
@@ -348,7 +348,7 @@ for i in range(num_steps):
     if (i+1) % 50000 == 0:
         # Save the model checkpoint
         print(f"Saving model checkpoint at step {i+1}")
-        torch.save(model, f"./model_checkpoint_{i}.pt")
+        torch.save(model, f"./{loss_fn_str}_model_checkpoint_{i}.pt")
 df = pd.DataFrame({
     'epoch': list(range(1, len(losses) + 1)),
     'train_loss': losses,
