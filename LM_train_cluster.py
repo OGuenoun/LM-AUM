@@ -67,9 +67,8 @@ def Proposed_AUM_micro(pred_tensor, label_tensor):
     return torch.sum(min_FPR_FNR * constant_diff)
 
 def ROC_curve_macro(pred_tensor, label_tensor):
-    device = pred_tensor.device 
     n_class=pred_tensor.size(1)
-    one_hot_labels = F.one_hot(label_tensor, num_classes=n_class).to(device)
+    one_hot_labels = F.one_hot(label_tensor, num_classes=n_class)
     is_positive = one_hot_labels
     is_negative =1-one_hot_labels
     fn_diff = -is_positive
@@ -82,7 +81,7 @@ def ROC_curve_macro(pred_tensor, label_tensor):
     sorted_fn_cum = -torch.div(torch.gather(fn_diff, dim=0, index=sorted_indices).flip(0).cumsum(0).flip(0) , fn_denom)
     sorted_thresh = torch.gather(thresh_tensor, dim=0, index=sorted_indices)
     #Problem starts here 
-    zeros_vec=torch.zeros(1,n_class,device=device)
+    zeros_vec=torch.zeros(1,n_class)
     FPR = torch.cat([zeros_vec, sorted_fp_cum])
     FNR = torch.cat([sorted_fn_cum, zeros_vec])
     return {
@@ -90,31 +89,27 @@ def ROC_curve_macro(pred_tensor, label_tensor):
         "FNR_all_classes": FNR,
         "TPR_all_classes": 1 - FNR,
         "min(FPR,FNR)": torch.minimum(FPR, FNR),
-        "min_constant": torch.cat([-torch.ones(1,n_class, device=device), sorted_thresh]),
+        "min_constant": torch.cat([-torch.ones(1,n_class), sorted_thresh]),
         "max_constant": torch.cat([sorted_thresh, zeros_vec])
     }
 
-
 def ROC_AUC_macro(pred_tensor, label_tensor):
     roc = ROC_curve_macro(pred_tensor, label_tensor)
+    unique_labs = torch.unique(label_tensor, return_counts=False)
+    mask = torch.zeros(pred_tensor.size(1), dtype=torch.bool)
+    mask[unique_labs] = True
+    actual_n_classes=unique_labs.size(0)
     FPR_diff = roc["FPR_all_classes"][1:,:]-roc["FPR_all_classes"][:-1,]
     TPR_sum = roc["TPR_all_classes"][1:,:]+roc["TPR_all_classes"][:-1,:]
     sum_FPR_TPR= torch.sum(FPR_diff*TPR_sum/2.0,dim=0)
-    count_non_defined=(sum_FPR_TPR == 0).sum()
-    if count_non_defined==pred_tensor.size(1):
-        return torch.tensor(0.0,device=pred_tensor.device)
-    return  sum_FPR_TPR.sum()/(pred_tensor.size(1)-count_non_defined)
-
+    return  sum_FPR_TPR[mask].mean()
 def Proposed_AUM_macro(pred_tensor, label_tensor):
+    actual_n_classes = torch.unique(label_tensor, return_counts=False).size(0)
     roc = ROC_curve_macro(pred_tensor, label_tensor)
     min_FPR_FNR = roc["min(FPR,FNR)"][1:-1,:]
-    sum_FPR=roc["FPR_all_classes"][1:-1,:].sum(dim=0)
     constant_diff = roc["min_constant"][1:,:].diff(dim=0)
     sum_min= torch.sum(min_FPR_FNR * constant_diff,dim=0)
-    count_non_defined=(sum_FPR==0).sum()
-    if count_non_defined==pred_tensor.size(1):
-        return torch.tensor(0.0,device=pred_tensor.device)
-    return  sum_min.sum()/(pred_tensor.size(1)-count_non_defined)
+    return  sum_min.sum()/actual_n_classes
 
 loss_dict={
     "AUM_micro": Proposed_AUM_micro,
@@ -252,7 +247,9 @@ class GPTModel(nn.Module):
         x = self.token_embedding(x) + self.position_encoding
         x = self.blocks(x)
         x = self.ln_f(x)
-        return self.head(x)
+        logits= self.head(x)
+        probs = F.softmax(logits, dim=-1)
+        return probs
 
 
 

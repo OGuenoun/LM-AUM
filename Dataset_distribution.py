@@ -2,8 +2,9 @@ from datasets import load_dataset
 from transformers import GPT2TokenizerFast
 from collections import Counter
 from itertools import islice
+from plotnine import *
 import matplotlib.pyplot as plt
-
+import pandas as pd
 
 ds = load_dataset("roneneldan/TinyStories", split="train", streaming=True)
 
@@ -37,12 +38,16 @@ for i, batch in enumerate(batch_iterator(ds, batch_size)):
 freqs = Counter(counter.values())  # frequency of frequencies
 
 x, y = zip(*freqs.items())
-plt.figure(figsize=(10, 6))
-plt.bar(x, y, width=1.0)
-plt.yscale("log")
-plt.xscale("log")
-plt.xlabel("Token Count")
-plt.ylabel("Number of Tokens with that Count")
-plt.title("Histogram of Token Frequencies (log-log)")
-plt.tight_layout()
-plt.show()
+df = pd.DataFrame(freqs.items(), columns=["token_count", "num_tokens"])
+p = (
+    ggplot(df, aes(x="token_count", y="num_tokens")) +
+    geom_col(width=1.0) +
+    scale_x_log10() +
+    scale_y_log10() +
+    labs(
+        x="Token Count",
+        y="Number of Tokens with that Count",
+        title="Histogram of Token Frequencies (log-log)"
+    ) +
+    theme(figure_size=(10, 6))
+)
