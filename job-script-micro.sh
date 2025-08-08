@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=16G
 #SBATCH --time=24:00:00
-#SBATCH --gpus=nvidia_h100_80gb_hbm3_3g.40gb:1                     
+#SBATCH --gpus=h100:1                  
 #SBATCH --output=logs/%x-%j.out    
 #SBATCH --error=logs/%x-%j.err     
 

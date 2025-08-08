@@ -258,7 +258,7 @@ class GPTModel(nn.Module):
 
 # Example config:
 batch_size = 50
-sequence_len = 512
+sequence_len = 256
 num_steps = 120000
 accumulation_steps = 100
 
