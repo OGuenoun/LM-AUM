@@ -68,7 +68,8 @@ def Proposed_AUM_micro(pred_tensor, label_tensor):
 
 def ROC_curve_macro(pred_tensor, label_tensor):
     n_class=pred_tensor.size(1)
-    one_hot_labels = F.one_hot(label_tensor, num_classes=n_class)
+    device=pred_tensor.device
+    one_hot_labels = F.one_hot(label_tensor, num_classes=n_class).to(device)
     is_positive = one_hot_labels
     is_negative =1-one_hot_labels
     fn_diff = -is_positive
@@ -81,7 +82,7 @@ def ROC_curve_macro(pred_tensor, label_tensor):
     sorted_fn_cum = -torch.div(torch.gather(fn_diff, dim=0, index=sorted_indices).flip(0).cumsum(0).flip(0) , fn_denom)
     sorted_thresh = torch.gather(thresh_tensor, dim=0, index=sorted_indices)
     #Problem starts here 
-    zeros_vec=torch.zeros(1,n_class)
+    zeros_vec=torch.zeros(1,n_class,device=device)
     FPR = torch.cat([zeros_vec, sorted_fp_cum])
     FNR = torch.cat([sorted_fn_cum, zeros_vec])
     return {
@@ -89,7 +90,7 @@ def ROC_curve_macro(pred_tensor, label_tensor):
         "FNR_all_classes": FNR,
         "TPR_all_classes": 1 - FNR,
         "min(FPR,FNR)": torch.minimum(FPR, FNR),
-        "min_constant": torch.cat([-torch.ones(1,n_class), sorted_thresh]),
+        "min_constant": torch.cat([-torch.ones(1,n_class,device=device), sorted_thresh]),
         "max_constant": torch.cat([sorted_thresh, zeros_vec])
     }
 
@@ -243,20 +244,21 @@ class GPTModel(nn.Module):
         self.ln_f = nn.LayerNorm(config.n_embd).to(device)
         self.head = nn.Linear(config.n_embd, config.vocab_size).to(device)
     
-    def forward(self, x):
+    def forward(self, x,return_probs=False):
         x = self.token_embedding(x) + self.position_encoding
         x = self.blocks(x)
         x = self.ln_f(x)
         logits= self.head(x)
-        probs = F.softmax(logits, dim=-1)
-        return probs
+        if return_probs:
+            return torch.softmax(logits, dim=-1)
+        return logits
 
 
 
 # Example config:
 batch_size = 50
 sequence_len = 256
-num_steps = 120000
+num_steps = 150000
 accumulation_steps = 100
 
 train_ds = datasets.load_dataset("parquet", data_files="Tinystories_train.parquet", split="train")
@@ -284,7 +286,7 @@ model = GPTModel(config)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-2)
 
-
+return_probs = (loss_fn_str != "Cross-entropy")
 # reduce learning rate 
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',factor=0.3, patience=10, min_lr=5e-6, threshold=1e-4)
 
@@ -301,7 +303,7 @@ for i in range(num_steps):
     train_input = example["input"].to(device)
     train_target = example["target"].to(device)
 
-    logits = model(train_input)
+    logits = model(train_input, return_probs=return_probs)
     loss = loss_fn(logits.view(-1, logits.size(-1)), train_target.view(-1))
     loss.backward()
 
@@ -327,7 +329,7 @@ for i in range(num_steps):
             for test_example in test_dataloader:
                 test_input = test_example["input"].to(device)
                 test_target = test_example["target"].to(device)
-                test_logits = model(test_input)
+                test_logits = model(test_input,return_probs=return_probs)
                 test_loss += loss_fn(test_logits.view(-1, test_logits.size(-1)), test_target.view(-1)).item()
                 test_accumulator += 1
             test_losses.append(test_loss / test_accumulator)
@@ -337,7 +339,7 @@ for i in range(num_steps):
             scheduler.step(test_losses[-1])
 
 
-    if (i+1) % 40000 == 0:
+    if (i+1) % 50000 == 0:
         # Save the model checkpoint
         print(f"Saving model checkpoint at step {i+1}")
         torch.save(model, f"./{loss_fn_str}_model_checkpoint_{i}.pt")

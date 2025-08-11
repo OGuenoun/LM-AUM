@@ -52,7 +52,7 @@ if not check_dataset_exists():
                 row_count += 1
 
     # Set the max number of rows for training and testing
-    TRAIN_ROWS = 300000  # Adjust as needed
+    TRAIN_ROWS = 500000  # Adjust as needed
     TEST_ROWS = 500   # Adjust as needed
     CHUNK_SIZE = 256
 
