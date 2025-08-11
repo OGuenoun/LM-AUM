@@ -244,14 +244,12 @@ class GPTModel(nn.Module):
         self.ln_f = nn.LayerNorm(config.n_embd).to(device)
         self.head = nn.Linear(config.n_embd, config.vocab_size).to(device)
     
-    def forward(self, x,return_probs=False):
+    def forward(self, x):
         x = self.token_embedding(x) + self.position_encoding
         x = self.blocks(x)
         x = self.ln_f(x)
         logits= self.head(x)
-        if return_probs:
-            return torch.softmax(logits, dim=-1)
-        return logits
+        return torch.softmax(logits, dim=-1)
 
 
 
