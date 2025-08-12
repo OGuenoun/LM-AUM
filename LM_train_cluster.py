@@ -284,7 +284,6 @@ model = GPTModel(config)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-2)
 
-return_probs = (loss_fn_str != "Cross-entropy")
 # reduce learning rate 
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',factor=0.3, patience=10, min_lr=5e-6, threshold=1e-4)
 
@@ -301,7 +300,7 @@ for i in range(num_steps):
     train_input = example["input"].to(device)
     train_target = example["target"].to(device)
 
-    logits = model(train_input, return_probs=return_probs)
+    logits = model(train_input)
     loss = loss_fn(logits.view(-1, logits.size(-1)), train_target.view(-1))
     loss.backward()
 
@@ -327,7 +326,7 @@ for i in range(num_steps):
             for test_example in test_dataloader:
                 test_input = test_example["input"].to(device)
                 test_target = test_example["target"].to(device)
-                test_logits = model(test_input,return_probs=return_probs)
+                test_logits = model(test_input)
                 test_loss += loss_fn(test_logits.view(-1, test_logits.size(-1)), test_target.view(-1)).item()
                 test_accumulator += 1
             test_losses.append(test_loss / test_accumulator)
