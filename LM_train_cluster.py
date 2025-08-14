@@ -99,18 +99,19 @@ def ROC_AUC_macro(pred_tensor, label_tensor):
     unique_labs = torch.unique(label_tensor, return_counts=False)
     mask = torch.zeros(pred_tensor.size(1), dtype=torch.bool)
     mask[unique_labs] = True
-    actual_n_classes=unique_labs.size(0)
     FPR_diff = roc["FPR_all_classes"][1:,:]-roc["FPR_all_classes"][:-1,]
     TPR_sum = roc["TPR_all_classes"][1:,:]+roc["TPR_all_classes"][:-1,:]
     sum_FPR_TPR= torch.sum(FPR_diff*TPR_sum/2.0,dim=0)
     return  sum_FPR_TPR[mask].mean()
 def Proposed_AUM_macro(pred_tensor, label_tensor):
-    actual_n_classes = torch.unique(label_tensor, return_counts=False).size(0)
     roc = ROC_curve_macro(pred_tensor, label_tensor)
+    unique_labs = torch.unique(label_tensor, return_counts=False)
+    mask = torch.zeros(pred_tensor.size(1), dtype=torch.bool)
+    mask[unique_labs] = True
     min_FPR_FNR = roc["min(FPR,FNR)"][1:-1,:]
     constant_diff = roc["min_constant"][1:,:].diff(dim=0)
     sum_min= torch.sum(min_FPR_FNR * constant_diff,dim=0)
-    return  sum_min.sum()/actual_n_classes
+    return  sum_min[mask].mean()
 
 loss_dict={
     "AUM_micro": Proposed_AUM_micro,
