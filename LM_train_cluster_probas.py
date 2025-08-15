@@ -50,8 +50,8 @@ def ROC_curve_micro(pred_tensor, label_tensor):
         "FNR": FNR,
         "TPR": 1 - FNR,
         "min(FPR,FNR)": torch.minimum(FPR, FNR),
-        "min_constant": torch.cat([torch.tensor([-torch.inf],device=device), uniq_thresh]),
-        "max_constant": torch.cat([uniq_thresh, torch.tensor([torch.inf],device=device)])
+        "min_constant": torch.cat([torch.tensor([-1],device=device), uniq_thresh]),
+        "max_constant": torch.cat([uniq_thresh, torch.tensor([0],device=device)])
     }
 def ROC_AUC_micro(pred_tensor, label_tensor):
     roc = ROC_curve_micro(pred_tensor, label_tensor)
@@ -250,7 +250,7 @@ class GPTModel(nn.Module):
         x = self.blocks(x)
         x = self.ln_f(x)
         logits= self.head(x)
-        return logits
+        return torch.softmax(logits, dim=-1)
 
 
 
